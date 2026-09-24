@@ -650,7 +650,7 @@ The point at which this occurs depends on the model assumptions.
 
 # Current Outputs
 
-The project generates model-based plots including:
+The project generates the following model-based plots:
 
 - NPV vs monthly production rate
 - NPV sensitivity to incremental margin
@@ -687,16 +687,16 @@ Results should therefore be interpreted as **scenario-analysis outputs**, not fo
 
 ---
 
-# Future Extensions
+# Future Improvements
 
-[ ] Introduce downside, base, and upside demand scenarios.
-[ ] Add separate engine and major-supplier capacity constraints.
-[ ] Add uncertainty to future order intake.
-[ ] Model production-ramp investment over multiple years rather than entirely at time zero.
-[ ] Add Monte Carlo simulation.
-[ ] Add a more detailed working-capital model.
-[ ] Introduce production-rate-dependent variable costs.
-[ ] Compare alternative ramp strategies under identical demand assumptions.
-[ ] Add sensitivity to inventory holding cost and investment scaling.
+- [ ] Introduce downside, base, and upside demand scenarios.
+- [ ] Add separate engine and major-supplier capacity constraints.
+- [ ] Add uncertainty to future order intake.
+- [ ] Model production-ramp investment over multiple years rather than entirely at time zero.
+- [ ] Add Monte Carlo simulation.
+- [ ] Add a more detailed working-capital model.
+- [ ] Introduce production-rate-dependent variable costs.
+- [ ] Compare alternative ramp strategies under identical demand assumptions.
+- [ ] Add sensitivity to inventory holding cost and investment scaling.
 
 ---
