@@ -1,0 +1,10 @@
+parameter,base,low,high,unit,source_type,assumption_note
+incremental_margin_per_aircraft,8,5,12,EUR_million,assumption,Illustrative incremental contribution margin per additional A320-family aircraft
+ramp_investment,2500,1500,4000,EUR_million,assumption,Illustrative investment specifically attributable to the A320 production ramp
+discount_rate,0.10,0.08,0.12,decimal,assumption,Illustrative corporate investment hurdle rate
+project_life_years,10,8,12,years,assumption,Illustrative economic life of the capacity investment
+supply_chain_availability,0.95,0.80,1.00,decimal,assumption,Share of nominal production capacity achievable after supplier and engine constraints
+demand_utilization,1.00,0.85,1.00,decimal,assumption,Share of effective capacity assumed to be supported by demand
+maximum_annual_demand,800,900,1000,aircraft_per_year,assumption,Illustrative annual market demand available for A320-family deliveries
+inventory_cost_per_aircraft,0.5,1.0,1.5,EUR_million_per_aircraft_year,assumption,Illustrative annual storage maintenance insurance and working-capital cost per aircraft held
+capex_scaling_exponent,1.0,1.2,1.4,decimal,assumption,Controls how quickly capacity investment rises above the 75-aircraft-per-month reference case

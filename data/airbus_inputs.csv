@@ -1,0 +1,14 @@
+parameter,value,unit,source_type,source_or_derivation
+a320_2025_deliveries,607,aircraft,reported,Airbus 2025 commercial aircraft deliveries release
+a320_2024_deliveries,602,aircraft,reported,Airbus 2025 commercial aircraft deliveries release
+a320_2023_deliveries,571,aircraft,reported,Airbus 2025 commercial aircraft deliveries release
+a320_monthly_2025_average,50.5833,aircraft_per_month,derived,607 / 12
+target_monthly_rate_low,70,aircraft_per_month,reported,Airbus expects A320 Family rate of 70-75/month by end-2027
+target_monthly_rate_high,75,aircraft_per_month,reported,Airbus expects A320 Family rate of 70-75/month by end-2027 and to stabilise at 75 thereafter
+target_annual_rate_high,900,aircraft_per_year,derived,75 * 12
+commercial_aircraft_revenue_2025,52600,EUR_million,reported,Airbus FY2025 results
+commercial_aircraft_adjusted_ebit_2025,5470,EUR_million,reported,Airbus FY2025 results
+commercial_aircraft_adjusted_ebit_margin_2025,0.1040,decimal,derived,5470 / 52600
+commercial_aircraft_capex_2025,3037,EUR_million,reported,Airbus FY2025 financial statements
+commercial_backlog_2025,8754,aircraft,reported,Airbus 2025 commercial aircraft deliveries release
+a320_backlog_2025,7163,aircraft,reported,Airbus year-end 2025 A320 Family backlog

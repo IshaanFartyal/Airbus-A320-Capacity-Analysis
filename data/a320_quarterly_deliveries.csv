@@ -1,0 +1,21 @@
+quarter,a320_family_deliveries,source_type,source_or_derivation
+Q1 2021,105,reported,Airbus Q1 2021 results
+Q2 2021,132,derived,237 H1 cumulative deliveries - 105 Q1 deliveries
+Q3 2021,104,derived,341 9M cumulative deliveries - 237 H1 cumulative deliveries
+Q4 2021,142,derived,483 FY2021 cumulative deliveries - 341 9M cumulative deliveries
+Q1 2022,109,reported,Airbus Q1 2022 results
+Q2 2022,121,derived,230 H1 cumulative deliveries - 109 Q1 deliveries
+Q3 2022,110,derived,340 9M cumulative deliveries - 230 H1 cumulative deliveries
+Q4 2022,176,derived,516 FY2022 cumulative deliveries - 340 9M cumulative deliveries
+Q1 2023,106,reported,Airbus Q1 2023 results
+Q2 2023,150,derived,256 H1 cumulative deliveries - 106 Q1 deliveries
+Q3 2023,135,derived,391 9M cumulative deliveries - 256 H1 cumulative deliveries
+Q4 2023,180,derived,571 FY2023 cumulative deliveries - 391 9M cumulative deliveries
+Q1 2024,116,reported,Airbus Q1 2024 results
+Q2 2024,145,derived,261 H1 cumulative deliveries - 116 Q1 deliveries
+Q3 2024,135,derived,396 9M cumulative deliveries - 261 H1 cumulative deliveries
+Q4 2024,206,derived,602 FY2024 cumulative deliveries - 396 9M cumulative deliveries
+Q1 2025,106,reported,Airbus Q1 2025 results
+Q2 2025,126,derived,232 H1 cumulative deliveries - 106 Q1 deliveries
+Q3 2025,160,derived,392 9M cumulative deliveries - 232 H1 cumulative deliveries
+Q4 2025,215,derived,607 FY2025 cumulative deliveries - 392 9M cumulative deliveries
