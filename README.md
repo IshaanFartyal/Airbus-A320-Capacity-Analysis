@@ -4,9 +4,9 @@ A Python model that assesses the economic value of Airbus's A320 Family producti
 
 ## Business Question
 
-> To what extent does expanding A320 Family production toward 75 aircraft per month translate into economic value, and which operational and financial factors most influence that value?
+> How dependent is the value of Airbus's A320 Family ramp-up on its suppliers' ability to keep pace?
 
-The headline case follows Airbus's stated target of 70 to 75 aircraft per month by the end of 2027. The model compares it with deliberately slower ramps and with delays of that target, and tests how the result depends on supply-chain performance, delivery demand, margin, investment cost, and the pace of the ramp.
+The main scenario follows Airbus's stated target of ramping production up to 70-75 aircraft per month by the end of 2027 and stabilizing at rate 75 thereafter. The model values that target, then tests how much of the value survives if suppliers are unable to fully support the planned ramp, or if the ramp is delayed. It also compares the target with deliberately slower ramps, and tests the result against delivery demand, margin, investment cost, and the discount rate.
 
 Airbus does not disclose aircraft-level margins, ramp investment, or the capacity of its existing factories. Reported Airbus figures and model assumptions are therefore kept in separate files, and the results should be read as scenario analysis, not as a forecast of Airbus's actual economics.
 
@@ -89,7 +89,7 @@ Capacity investment is phased over the ramp and paid the year before the capacit
 |---|---|---|
 | No-investment baseline | 55 aircraft/month | 2019 delivery record (53.5/month) plus about 3% for capacity added since |
 | Supply-chain availability | 95% | Assumption; Airbus has delivered roughly 92–102% of its annual targets in 2022–2025 |
-| Delivery demand | 900 aircraft/year | Airbus's stated stabilisation rate; about 53% of its forecast single-aisle market |
+| Delivery demand | 900 aircraft/year | Airbus's stated stabilzation rate; about 53% of its forecast single-aisle market |
 | Margin per additional aircraft | €8m | Assumption |
 | Ramp investment to rate 75 | €2.5bn | Assumption |
 | Comfortable ramp pace | 5/month per year | Largest annual rise in A320 deliveries since 2000 was 5.7/month |
