@@ -52,6 +52,13 @@ from scenarios import (
 )
 
 
+def modelled_period_text():
+    """The years covered by the model itself, without the extended life."""
+    years = list(get_production_ramp(TARGET_CASE).keys())
+
+    return f"{years[0]} to {years[-1]}"
+
+
 # --------------------------------------------------
 # Figure: NPV vs production rate
 # --------------------------------------------------
@@ -136,8 +143,8 @@ def plot_npv_vs_production_rate(reported):
             f"where capacity meets delivery demand"
         ),
         subtitle=(
-            "NPV by constant monthly A320-family production rate, "
-            "base assumptions"
+            f"NPV, {modelled_period_text()}, by constant monthly "
+            f"A320-family production rate"
         ),
     )
 
@@ -232,8 +239,8 @@ def plot_npv_vs_production_rate_by_demand(reported):
             f"{peaks['upside']:.0f} a month across the demand range"
         ),
         subtitle=(
-            "NPV by constant monthly production rate for three "
-            "long-run delivery demand levels"
+            f"NPV, {modelled_period_text()}, by constant monthly "
+            f"production rate for three demand levels"
         ),
     )
 
@@ -466,8 +473,8 @@ def plot_npv_tornado():
             f"{largest['label']} moves NPV the most"
         ),
         subtitle=(
-            "Target-case NPV when one assumption moves to its downside or "
-            "upside value, others at base"
+            f"Target-case NPV, {modelled_period_text()}, when one "
+            f"assumption moves to its downside or upside value"
         ),
     )
 
@@ -627,8 +634,8 @@ def plot_npv_vs_supply_chain_availability(
         fig,
         headline=headline,
         subtitle=(
-            "NPV by ramp scenario and supply-chain availability. "
-            "Break-even shown for the Airbus target case"
+            f"NPV, {modelled_period_text()}, by supply-chain availability. "
+            f"Break-even shown for the Airbus target case"
         ),
     )
 
