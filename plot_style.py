@@ -8,6 +8,14 @@ import matplotlib.pyplot as plt
 
 OUTPUT_DIR = Path(__file__).parent / "outputs"
 
+# Clean copies of every figure for the written report: no headline,
+# subtitle or source note, because the report caption carries those
+REPORT_DIR = OUTPUT_DIR / "report"
+REPORT_SUFFIX = "_report"
+
+# Marks the text that is left out of the report copy
+STANDALONE_ONLY = "standalone_only"
+
 SOURCE_NOTE = (
     "Source: Own model. Illustrative assumptions, not Airbus data."
 )
@@ -61,6 +69,10 @@ def billions(value_in_millions):
 
 def euro_billions(value_in_billions):
     """Format a € billion value for labels, with a proper minus sign."""
+    # A value that rounds to zero is shown without a minus sign
+    if round(value_in_billions, 1) == 0:
+        value_in_billions = 0
+
     sign = "\u2212" if value_in_billions < 0 else ""
 
     return f"{sign}€{abs(value_in_billions):.1f}bn"
@@ -121,9 +133,17 @@ def add_titles(fig, headline, subtitle):
     shrink_to_fit(fig, headline_text)
     shrink_to_fit(fig, subtitle_text)
 
+    headline_text.set_gid(STANDALONE_ONLY)
+    subtitle_text.set_gid(STANDALONE_ONLY)
+
 
 def save_figure(fig, filename, source_note=SOURCE_NOTE):
-    fig.text(
+    """Save two copies: a standalone figure and a clean one for the report.
+
+    outputs/<name>.png               headline, subtitle and source note
+    outputs/report/<name>_report.png the plot only, cropped to its content
+    """
+    source_text = fig.text(
         0.02,
         0.02,
         source_note,
@@ -132,12 +152,31 @@ def save_figure(fig, filename, source_note=SOURCE_NOTE):
         ha="left",
         va="bottom",
     )
+    source_text.set_gid(STANDALONE_ONLY)
 
     OUTPUT_DIR.mkdir(exist_ok=True)
 
     fig.savefig(
         OUTPUT_DIR / filename,
         dpi=300,
+    )
+
+    # Report copy: hide the title block and source note, then crop
+    for text in fig.texts:
+        if text.get_gid() == STANDALONE_ONLY:
+            text.set_visible(False)
+
+    REPORT_DIR.mkdir(exist_ok=True)
+
+    report_filename = (
+        Path(filename).stem + REPORT_SUFFIX + Path(filename).suffix
+    )
+
+    fig.savefig(
+        REPORT_DIR / report_filename,
+        dpi=300,
+        bbox_inches="tight",
+        pad_inches=0.1,
     )
 
     plt.close(fig)

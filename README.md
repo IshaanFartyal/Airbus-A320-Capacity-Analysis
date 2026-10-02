@@ -88,7 +88,7 @@ Capacity investment is phased over the ramp and paid the year before the capacit
 | Assumption | Base value | Basis |
 |---|---|---|
 | No-investment baseline | 55 aircraft/month | 2019 delivery record (53.5/month) plus about 3% for capacity added since |
-| Supply-chain availability | 95% | Assumption; Airbus has delivered roughly 92–102% of its annual targets in 2022–2025 |
+| Supply-chain availability | 85% | Assumption between two measures: about 77% of the rate planned two to three years earlier (2024–2025), and 92–102% of annual delivery targets (2022–2025) |
 | Delivery demand | 900 aircraft/year | Airbus's stated stabilzation rate; about 53% of its forecast single-aisle market |
 | Margin per additional aircraft | €8m | Assumption |
 | Ramp investment to rate 75 | €2.5bn | Assumption |

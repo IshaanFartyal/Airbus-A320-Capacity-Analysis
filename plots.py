@@ -140,7 +140,7 @@ def plot_npv_vs_production_rate(reported):
         fig,
         headline=(
             f"NPV peaks at {peak_rate:.0f} aircraft/month, "
-            f"where capacity meets delivery demand"
+            f"where supply-limited output meets delivery demand"
         ),
         subtitle=(
             f"NPV, {modelled_period_text()}, by constant monthly "
@@ -375,6 +375,13 @@ def plot_npv_tornado():
                 va="center",
                 color=COLOR_TEXT,
                 fontsize=9,
+                # White patch so the zero line does not run through a label
+                bbox={
+                    "facecolor": "white",
+                    "edgecolor": "none",
+                    "pad": 1.5,
+                },
+                zorder=5,
             )
 
     ax.axvline(
@@ -784,8 +791,10 @@ def plot_target_case(ramp_results):
     final_deliveries = df["deliveries"].iloc[-1]
     final_capacity = df["production_capacity"].iloc[-1]
 
-    # When capacity is the binding constraint in every year, deliveries
-    # and capacity are the same line, so they are drawn and labelled once.
+    # production_capacity is the planned rate after the supply ceiling,
+    # so it is what suppliers allow Airbus to build. When it is the
+    # binding constraint in every year, deliveries follow the same line
+    # and are drawn and labelled once.
     capacity_equals_deliveries = (
         (df["production_capacity"] - df["deliveries"]).abs() < 1
     ).all()
@@ -804,7 +813,7 @@ def plot_target_case(ramp_results):
             df["year"],
             df["deliveries"],
             color=COLOR_PRIMARY,
-            label="Deliveries (equal to production capacity)",
+            label="Deliveries (equal to the supply ceiling)",
         )
 
         end_labels.append(
@@ -816,7 +825,7 @@ def plot_target_case(ramp_results):
             df["production_capacity"],
             color=COLOR_TERTIARY,
             linestyle="--",
-            label="Production capacity",
+            label="Supply ceiling",
         )
 
         ax.plot(
@@ -827,7 +836,7 @@ def plot_target_case(ramp_results):
         )
 
         end_labels.append(
-            (final_capacity, f"Capacity {final_capacity:.0f}")
+            (final_capacity, f"Supply ceiling {final_capacity:.0f}")
         )
         end_labels.append(
             (final_deliveries, f"Deliveries {final_deliveries:.0f}")
@@ -860,12 +869,12 @@ def plot_target_case(ramp_results):
 
     if capacity_bound_years == len(df):
         headline = (
-            "Capacity, not demand, limits deliveries "
+            "Supply, not demand, limits deliveries "
             "in every year of the Airbus target case"
         )
     else:
         headline = (
-            f"Capacity limits deliveries in {capacity_bound_years} "
+            f"Supply limits deliveries in {capacity_bound_years} "
             f"of {len(df)} years of the Airbus target case"
         )
 
@@ -873,7 +882,7 @@ def plot_target_case(ramp_results):
         fig,
         headline=headline,
         subtitle=(
-            "Airbus target case: annual delivery demand, production capacity "
+            "Airbus target case: annual delivery demand, supply ceiling "
             "and deliveries"
         ),
     )
@@ -1286,8 +1295,9 @@ def plot_npv_by_delay(delays, period_text):
     ax.set_xlabel("Delay to the Airbus target case (years)")
     ax.set_ylabel("NPV (€ billion)")
 
+    # Upper right is clear because both lines fall from left to right
     ax.legend(
-        loc="lower left",
+        loc="upper right",
         fontsize=9,
     )
 
