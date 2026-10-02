@@ -55,7 +55,7 @@ plt.close()
 
 monthly_rate = reported["target_monthly_rate_high"]
 
-margins = [3, 5, 8, 10, 12]
+margins = [4, 6, 8, 10, 12]
 margin_npvs = []
 
 for margin in margins:
