@@ -20,6 +20,7 @@ from plot_style import (
     COLOR_SECONDARY,
     COLOR_TERTIARY,
     COLOR_TEXT,
+    COLOR_TEXT_MUTED,
     OUTPUT_DIR,
     add_titles,
     add_zero_line,
@@ -141,9 +142,9 @@ def plot_npv_vs_production_rate_by_demand(reported):
     target_rate = reported["target_monthly_rate_high"]
 
     demand_styles = [
-        ("low", "Low demand", COLOR_TERTIARY),
+        ("downside", "Low demand", COLOR_TERTIARY),
         ("base", "Base demand", COLOR_PRIMARY),
-        ("high", "High demand", COLOR_SECONDARY),
+        ("upside", "High demand", COLOR_SECONDARY),
     ]
 
     fig, ax = new_figure()
@@ -178,7 +179,7 @@ def plot_npv_vs_production_rate_by_demand(reported):
             npvs,
             color=color,
             label=(
-                f"{label}, {DEMAND_LEVELS[demand_case]:,} a year: "
+                f"{label}, {DEMAND_LEVELS[demand_case]:,}/year: "
                 f"peak at {peak_rate:.0f}/month, {euro_billions(peak_npv)}"
             ),
         )
@@ -215,8 +216,8 @@ def plot_npv_vs_production_rate_by_demand(reported):
     add_titles(
         fig,
         headline=(
-            f"The value-maximising rate moves from {peaks['low']:.0f} to "
-            f"{peaks['high']:.0f} a month across the demand range"
+            f"The value-maximising rate moves from {peaks['downside']:.0f} to "
+            f"{peaks['upside']:.0f} a month across the demand range"
         ),
         subtitle=(
             "NPV by constant monthly production rate for three "
@@ -256,15 +257,15 @@ TORNADO_PARAMETERS = {
     ),
     "expedite_cost_per_rate_point": (
         "Expedite cost per rate point",
-        "€{:.0f}m",
+        "€{:g}m",
     ),
 }
 
 
 def plot_npv_tornado():
     base = load_assumptions("base")
-    low = load_assumptions("low")
-    high = load_assumptions("high")
+    downside = load_assumptions("downside")
+    upside = load_assumptions("upside")
 
     base_npv = billions(run_ramp_case("base", base)["npv"])
 
@@ -272,23 +273,47 @@ def plot_npv_tornado():
 
     for parameter, (label, value_format) in TORNADO_PARAMETERS.items():
 
-        low_case = dict(base)
-        low_case[parameter] = low[parameter]
+        downside_case = dict(base)
+        downside_case[parameter] = downside[parameter]
 
-        high_case = dict(base)
-        high_case[parameter] = high[parameter]
+        upside_case = dict(base)
+        upside_case[parameter] = upside[parameter]
 
-        npv_at_low = billions(run_ramp_case("base", low_case)["npv"])
-        npv_at_high = billions(run_ramp_case("base", high_case)["npv"])
+        npv_at_downside = billions(
+            run_ramp_case("base", downside_case)["npv"]
+        )
+        npv_at_upside = billions(
+            run_ramp_case("base", upside_case)["npv"]
+        )
 
         rows.append({
             "label": label,
-            "npv_at_low": npv_at_low,
-            "npv_at_high": npv_at_high,
-            "low_text": value_format.format(low[parameter]),
-            "high_text": value_format.format(high[parameter]),
-            "swing": abs(npv_at_high - npv_at_low),
+            "base_text": value_format.format(base[parameter]),
+            "npv_at_downside": npv_at_downside,
+            "npv_at_upside": npv_at_upside,
+            "downside_text": value_format.format(downside[parameter]),
+            "upside_text": value_format.format(upside[parameter]),
+            "swing": abs(npv_at_upside - npv_at_downside),
         })
+
+    # Delivery demand is defined in demand.py rather than the
+    # assumptions file, so it is added separately
+    npv_at_downside = billions(
+        run_ramp_case("base", base, demand_case="downside")["npv"]
+    )
+    npv_at_upside = billions(
+        run_ramp_case("base", base, demand_case="upside")["npv"]
+    )
+
+    rows.append({
+        "label": "Delivery demand",
+        "base_text": f"{DEMAND_LEVELS['base']:,}/year",
+        "npv_at_downside": npv_at_downside,
+        "npv_at_upside": npv_at_upside,
+        "downside_text": f"{DEMAND_LEVELS['downside']:,}/year",
+        "upside_text": f"{DEMAND_LEVELS['upside']:,}/year",
+        "swing": abs(npv_at_upside - npv_at_downside),
+    })
 
     # Largest swing at the top
     rows.sort(key=lambda row: row["swing"])
@@ -296,13 +321,13 @@ def plot_npv_tornado():
     fig, ax = new_figure()
 
     # Extra room on the left for the labels and on top for the legend
-    fig.subplots_adjust(left=0.27, top=0.77)
+    fig.subplots_adjust(left=0.27, right=0.85, top=0.77)
 
     for position, row in enumerate(rows):
 
         for npv_value, text, color in [
-            (row["npv_at_low"], row["low_text"], COLOR_SECONDARY),
-            (row["npv_at_high"], row["high_text"], COLOR_PRIMARY),
+            (row["npv_at_downside"], row["downside_text"], COLOR_SECONDARY),
+            (row["npv_at_upside"], row["upside_text"], COLOR_PRIMARY),
         ]:
             ax.barh(
                 position,
@@ -316,6 +341,11 @@ def plot_npv_tornado():
                 offset, alignment = 5, "left"
             else:
                 offset, alignment = -5, "right"
+
+            # Say so when a value leaves NPV unchanged, so the missing
+            # bar is not read as an error
+            if abs(npv_value - base_npv) < 0.005:
+                text = f"{text} (no effect on NPV)"
 
             ax.annotate(
                 text,
@@ -337,16 +367,17 @@ def plot_npv_tornado():
     all_values = [
         value
         for row in rows
-        for value in (row["npv_at_low"], row["npv_at_high"])
+        for value in (row["npv_at_downside"], row["npv_at_upside"])
     ]
 
     add_zero_line(ax, all_values, horizontal=False)
 
-    padding = (max(all_values) - min(all_values)) * 0.12
+    # Room at both ends for the value labels
+    padding = (max(all_values) - min(all_values)) * 0.2
 
     ax.set_xlim(
-        min(all_values) - padding,
-        max(all_values) + padding,
+        min(all_values) - padding * 1.5,
+        max(all_values) + padding * 1.3,
     )
 
     ax.set_yticks(range(len(rows)))
@@ -355,25 +386,63 @@ def plot_npv_tornado():
         color=COLOR_TEXT,
     )
 
+    # Base value of each assumption in its own muted column to the
+    # right of the bars, so the reader can see downside, base and
+    # upside without a separate table
+    row_transform = ax.get_yaxis_transform()
+
+    for position, row in enumerate(rows):
+        ax.text(
+            1.03,
+            position,
+            row["base_text"],
+            transform=row_transform,
+            ha="left",
+            va="center",
+            color=COLOR_TEXT_MUTED,
+            fontsize=9,
+        )
+
     ax.grid(axis="y", visible=False)
     ax.grid(axis="x", visible=True)
 
     ax.set_xlabel(
-        f"NPV (€ billion). Vertical line: base case, €{base_npv:.1f}bn"
+        f"NPV (€ billion). Vertical line: Base case, €{base_npv:.1f}bn"
     )
 
-    ax.legend(
+    legend = ax.legend(
         handles=[
             plt.Rectangle((0, 0), 1, 1, color=COLOR_SECONDARY),
             plt.Rectangle((0, 0), 1, 1, color=COLOR_PRIMARY),
         ],
         labels=[
-            "Assumption at low value",
-            "Assumption at high value",
+            "Downside value",
+            "Upside value",
         ],
         loc="lower right",
         bbox_to_anchor=(1.0, 1.0),
         ncol=2,
+        fontsize=9,
+    )
+
+    # Heading for the base value column, placed level with the
+    # legend text so the three headings sit on one line
+    fig.canvas.draw()
+
+    legend_text_box = legend.get_texts()[0].get_window_extent()
+
+    heading_height = ax.transAxes.inverted().transform(
+        (0, (legend_text_box.y0 + legend_text_box.y1) / 2)
+    )[1]
+
+    ax.text(
+        1.03,
+        heading_height,
+        "Base value",
+        transform=ax.transAxes,
+        ha="left",
+        va="center",
+        color=COLOR_TEXT_MUTED,
         fontsize=9,
     )
 
@@ -385,8 +454,8 @@ def plot_npv_tornado():
             f"{largest['label']} moves NPV the most"
         ),
         subtitle=(
-            "Base-ramp NPV when one assumption moves to its low or high "
-            "value, others at base"
+            "Base-ramp NPV when one assumption moves to its downside or "
+            "upside value, others at base"
         ),
     )
 

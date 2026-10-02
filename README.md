@@ -16,7 +16,7 @@ Airbus does not disclose aircraft-level margins, ramp investment, or the capacit
 airbus_capacity_analysis/
 ├── data/
 │   ├── airbus_inputs.csv              reported and derived Airbus figures
-│   ├── airbus_assumptions.csv         model assumptions (base, low, high)
+│   ├── airbus_assumptions.csv         model assumptions (base, downside, upside)
 │   ├── a320_deliveries_history.csv    annual deliveries, 1988-2025
 │   └── a320_quarterly_deliveries.csv  quarterly deliveries, 2021-2025
 ├── outputs/                           generated figures
@@ -38,7 +38,7 @@ airbus_capacity_analysis/
 | `model.py` | Core relationships: production, deliveries, backlog, baseline, investment |
 | `financial_analysis.py` | NPV calculation |
 | `production_plan.py` | Slow, base, and fast ramp schedules; rates used for the rate sensitivity |
-| `demand.py` | Yearly delivery demand and new orders; low, base, and high demand levels |
+| `demand.py` | Yearly delivery demand and new orders; downside, base, and upside demand levels |
 | `scenarios.py` | Combines the above to evaluate ramps, constant rates, and assumption cases |
 | `main.py` | Prints the headline base case and the ramp comparison |
 | `plots.py` | Generates the model-based figures |
@@ -86,14 +86,14 @@ Capacity investment is phased over the ramp and paid the year before the capacit
 | Assumption | Base value | Basis |
 |---|---|---|
 | No-investment baseline | 55 aircraft/month | 2019 delivery record (53.5/month) plus about 3% for capacity added since |
-| Supply-chain availability | 95% | Assumption |
+| Supply-chain availability | 95% | Assumption; Airbus has delivered roughly 92–102% of its annual targets in 2022–2025 |
 | Delivery demand | 900 aircraft/year | Airbus's stated stabilisation rate; about 53% of its forecast single-aisle market |
 | Margin per additional aircraft | €8m | Assumption |
 | Ramp investment to rate 75 | €2.5bn | Assumption |
 | Expedite cost | €150m per rate point above 5/month per year | Assumption |
-| Discount rate | 10% | Assumption |
+| Discount rate | 12% | Rounded from Airbus's pre-tax WACC of 11.9% for its commercial aircraft business |
 
-All values and their ranges are in `data/airbus_assumptions.csv` and `demand.py`.
+All values are in `data/airbus_assumptions.csv` and `demand.py`, each with a downside and an upside value used for the sensitivity analysis.
 
 ## Data Sources
 

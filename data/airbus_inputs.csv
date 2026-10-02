@@ -12,3 +12,4 @@ commercial_aircraft_adjusted_ebit_margin_2025,0.1040,decimal,derived,5470 / 5260
 commercial_aircraft_capex_2025,3037,EUR_million,reported,Airbus FY2025 financial statements
 commercial_backlog_2025,8754,aircraft,reported,Airbus 2025 commercial aircraft deliveries release
 a320_backlog_2025,7163,aircraft,reported,Airbus year-end 2025 A320 Family backlog
+commercial_aircraft_pretax_wacc_2025,0.119,decimal,reported,Airbus FY2025 financial statements: euro-weighted pre-tax WACC used for the Airbus commercial aircraft goodwill impairment test (2024: 12.6 percent)

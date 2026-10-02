@@ -18,14 +18,19 @@ def load_input_values():
 
 
 def load_assumptions(case="base"):
+    """Load one column of the assumptions file as a dictionary.
+
+    Every value in the downside column lowers NPV relative to the base
+    case, and every value in the upside column raises it.
+    """
 
     if case not in {
         "base",
-        "low",
-        "high"
+        "downside",
+        "upside"
     }:
         raise ValueError(
-            "case must be 'base', 'low', or 'high'"
+            "case must be 'base', 'downside', or 'upside'"
         )
 
     df = pd.read_csv(
@@ -150,8 +155,8 @@ def show_input_classification():
             [
                 "parameter",
                 "base",
-                "low",
-                "high",
+                "downside",
+                "upside",
                 "unit",
                 "source_type",
                 "assumption_note"

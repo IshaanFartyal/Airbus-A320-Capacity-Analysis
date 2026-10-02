@@ -221,6 +221,7 @@ def evaluate_ramp_scenario(
     comfortable_annual_rate_step,
     expedite_cost_per_rate_point,
     baseline_monthly_rate,
+    demand_case="base",
 ):
     production_ramp = get_production_ramp(ramp_case)
 
@@ -250,6 +251,7 @@ def evaluate_ramp_scenario(
         inventory_cost_per_aircraft=inventory_cost_per_aircraft,
         production_cost_per_aircraft=production_cost_per_aircraft,
         baseline_monthly_rate=baseline_monthly_rate,
+        demand_case=demand_case,
     )
 
     annual_cash_flows = []
@@ -307,7 +309,7 @@ def evaluate_ramp_scenario(
 # Ramp cases
 # --------------------------------------------------
 
-def run_ramp_case(ramp_case, assumptions):
+def run_ramp_case(ramp_case, assumptions, demand_case="base"):
     return evaluate_ramp_scenario(
         ramp_case=ramp_case,
         margin_per_aircraft=assumptions["incremental_margin_per_aircraft"],
@@ -320,6 +322,7 @@ def run_ramp_case(ramp_case, assumptions):
         comfortable_annual_rate_step=assumptions["comfortable_annual_rate_step"],
         expedite_cost_per_rate_point=assumptions["expedite_cost_per_rate_point"],
         baseline_monthly_rate=assumptions["baseline_monthly_rate"],
+        demand_case=demand_case,
     )
 
 
@@ -338,18 +341,20 @@ def ramp_cases():
 
 
 # --------------------------------------------------
-# Standard low / base / high assumption cases
-# Each runs the base production ramp with the
-# corresponding column of the assumptions file
+# Combined downside / base / upside cases
+# Each runs the base production ramp with every
+# assumption, including delivery demand, at its
+# downside, base, or upside value
 # --------------------------------------------------
 
 def standard_cases():
     cases = {}
 
-    for case_name in ["low", "base", "high"]:
+    for case_name in ["downside", "base", "upside"]:
         cases[case_name] = run_ramp_case(
             "base",
             load_assumptions(case_name),
+            demand_case=case_name,
         )
 
     return cases
@@ -390,7 +395,7 @@ def rate_sensitivity(demand_case="base"):
 
 if __name__ == "__main__":
 
-    print("STANDARD CASES (base ramp, low / base / high assumptions)")
+    print("COMBINED CASES (base ramp, all assumptions at downside / base / upside)")
     print("=" * 60)
 
     for case_name, result in standard_cases().items():
