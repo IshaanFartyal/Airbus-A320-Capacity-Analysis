@@ -25,6 +25,7 @@ constant_rate = evaluate_rate_scenario(
     capex_scaling_exponent=assumptions["capex_scaling_exponent"],
     production_cost_per_aircraft=assumptions["production_cost_per_aircraft"],
     baseline_monthly_rate=assumptions["baseline_monthly_rate"],
+    extended_life_years=assumptions["extended_life_years"],
 )
 
 
@@ -69,7 +70,11 @@ print(
     f"(€{target_case['upfront_investment']:,.0f}m at time zero, rest phased)"
 )
 print(f"Expedite cost: €{target_case['expedite_cost']:,.0f}m")
-print(f"Project NPV: €{target_case['npv']:,.0f}m")
+print(f"Project NPV, 2026-2035: €{target_case['npv']:,.0f}m")
+print(
+    f"Project NPV including {assumptions['extended_life_years']:.0f} "
+    f"further years: €{target_case['npv_with_extension']:,.0f}m"
+)
 
 if target_case["payback_year"] is None:
     print("Cumulative cash flow turns positive: not within the model horizon")
@@ -86,14 +91,15 @@ print("-" * 60)
 for ramp_case, result in ramp_results.items():
     print(
         f"{RAMP_LABELS[ramp_case]:<15} "
-        f"NPV €{result['npv']:>7,.0f}m | "
+        f"NPV €{result['npv']:>6,.0f}m | "
+        f"with extended life €{result['npv_with_extension']:>6,.0f}m | "
         f"expedite cost €{result['expedite_cost']:>5,.0f}m"
     )
 
 print()
 print("REFERENCE: CONSTANT RATE 75 FROM YEAR ONE")
 print("-" * 60)
-print(f"Project NPV: €{constant_rate['npv']:,.0f}m")
+print(f"Project NPV, 2026-2035: €{constant_rate['npv']:,.0f}m")
 print(
     "This assumes the full rate is available immediately and all "
     "investment is paid at time zero, so it overstates the target case."

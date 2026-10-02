@@ -279,14 +279,18 @@ def phased_capacity_investment(
     reference_investment,
     capex_scaling_exponent,
     comfortable_annual_rate_step,
-    expedite_cost_per_rate_point,
+    expedite_premium,
 ):
     """Spread capacity investment over the ramp instead of paying it all at time zero.
 
     Total capex is set by the peak rate of the ramp. It is allocated to
     each year in proportion to the capacity that comes online that year.
+
     Year-on-year rate increases above the comfortable step also incur an
-    expedite cost, so a faster ramp is no longer free.
+    expedite cost, so a faster ramp is not free. Each rate point above
+    the comfortable step costs a premium on top of the normal investment
+    cost per rate point. A premium of 0.5 means that capacity added in a
+    hurry costs 50% more than capacity added at a comfortable pace.
 
     Returns a list of dicts, one per ramp year, with the capex and
     expedite cost attributable to the capacity added in that year.
@@ -306,6 +310,12 @@ def phased_capacity_investment(
         peak_rate - base_monthly_rate,
     )
 
+    # Normal investment cost of one aircraft per month of capacity
+    if total_capacity_added > 0:
+        capex_per_rate_point = total_capex / total_capacity_added
+    else:
+        capex_per_rate_point = 0
+
     schedule = []
     installed_rate = base_monthly_rate
 
@@ -316,19 +326,18 @@ def phased_capacity_investment(
             monthly_rate - installed_rate,
         )
 
-        if total_capacity_added > 0:
-            capex = (
-                total_capex
-                * capacity_added
-                / total_capacity_added
-            )
-        else:
-            capex = 0
+        capex = capacity_added * capex_per_rate_point
 
-        expedite_cost = max(
+        rate_points_above_comfortable_step = max(
             0,
             capacity_added - comfortable_annual_rate_step,
-        ) * expedite_cost_per_rate_point
+        )
+
+        expedite_cost = (
+            rate_points_above_comfortable_step
+            * capex_per_rate_point
+            * expedite_premium
+        )
 
         schedule.append({
             "year": year,

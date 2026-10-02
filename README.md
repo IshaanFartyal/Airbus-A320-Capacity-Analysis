@@ -6,7 +6,7 @@ A Python model that assesses the economic value of Airbus's A320 Family producti
 
 > To what extent does expanding A320 Family production toward 75 aircraft per month translate into economic value, and which operational and financial factors most influence that value?
 
-The headline case follows Airbus's stated target of 70 to 75 aircraft per month by the end of 2027. The model compares it with a one-year delay and a gradual ramp, and tests how the result depends on supply-chain performance, delivery demand, margin, investment cost, and the pace of the ramp.
+The headline case follows Airbus's stated target of 70 to 75 aircraft per month by the end of 2027. The model compares it with deliberately slower ramps and with delays of that target, and tests how the result depends on supply-chain performance, delivery demand, margin, investment cost, and the pace of the ramp.
 
 Airbus does not disclose aircraft-level margins, ramp investment, or the capacity of its existing factories. Reported Airbus figures and model assumptions are therefore kept in separate files, and the results should be read as scenario analysis, not as a forecast of Airbus's actual economics.
 
@@ -37,9 +37,9 @@ airbus_capacity_analysis/
 |---|---|
 | `model.py` | Core relationships: production, deliveries, backlog, baseline, investment |
 | `financial_analysis.py` | NPV calculation |
-| `production_plan.py` | Ramp schedules (Airbus target, one-year delay, gradual ramp); rates used for the rate sensitivity |
+| `production_plan.py` | Ramp schedules (Airbus target and three deliberately slower ramps), delays of the target, and rates used for the rate sensitivity |
 | `demand.py` | Yearly delivery demand and new orders; downside, base, and upside demand levels |
-| `scenarios.py` | Combines the above to evaluate ramps, constant rates, and assumption cases |
+| `scenarios.py` | Combines the above to evaluate ramps, delays, constant rates, and assumption cases |
 | `main.py` | Prints the headline Airbus target case and the ramp comparison |
 | `plots.py` | Generates the model-based figures |
 | `fixed_plots.py` | Generates the historical delivery figures |
@@ -79,7 +79,9 @@ annual cash flow       = incremental deliveries × margin per aircraft
 NPV                    = discounted annual cash flows, 2026-2035
 ```
 
-Capacity investment is phased over the ramp and paid the year before the capacity comes online. Year-on-year rate increases above a comfortable step incur an expedite cost, so a faster ramp is not free.
+The NPV is also reported with an extended life: the final year's cash flow is assumed to continue for ten further years. This is shown separately because it is an extrapolation. It is more conservative than the terminal value with perpetual growth that Airbus uses for its commercial aircraft business.
+
+Capacity investment is phased over the ramp and paid the year before the capacity comes online. Capacity added faster than a comfortable annual step costs a premium on top of the normal investment cost, so a faster ramp is not free.
 
 ## Key Assumptions
 
@@ -90,7 +92,9 @@ Capacity investment is phased over the ramp and paid the year before the capacit
 | Delivery demand | 900 aircraft/year | Airbus's stated stabilisation rate; about 53% of its forecast single-aisle market |
 | Margin per additional aircraft | €8m | Assumption |
 | Ramp investment to rate 75 | €2.5bn | Assumption |
-| Expedite cost | €150m per rate point above 5/month per year | Assumption |
+| Comfortable ramp pace | 5/month per year | Largest annual rise in A320 deliveries since 2000 was 5.7/month |
+| Expedite premium | 50% on capacity added faster than that | Assumption, anchored on overtime pay premiums of 25% to 50% |
+| Extended life | 10 years after 2035 | Assumption; more conservative than Airbus's perpetual-growth terminal value |
 | Discount rate | 12% | Rounded from Airbus's pre-tax WACC of 11.9% for its commercial aircraft business |
 
 All values are in `data/airbus_assumptions.csv` and `demand.py`, each with a downside and an upside value used for the sensitivity analysis.
@@ -107,6 +111,6 @@ All values are in `data/airbus_assumptions.csv` and `demand.py`, each with a dow
 
 - Margins, ramp investment, expedite costs, and the baseline are assumptions, not Airbus data.
 - The ramp is fixed in advance; Airbus cannot slow or stop investment in response to demand.
-- The horizon ends in 2035 with no terminal value.
+- Value after 2035 is a simple extension of the final year's cash flow, not a detailed projection.
 - No tax, financing, working capital, aircraft mix, or customer-specific pricing.
 - Demand and supplier performance are deterministic inputs, not simulated.

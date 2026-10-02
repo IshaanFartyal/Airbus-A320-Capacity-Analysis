@@ -19,8 +19,10 @@ SOURCE_NOTE = (
 FIGURE_SIZE = (8, 4.8)
 
 COLOR_PRIMARY = "#2a78d6"
+COLOR_PRIMARY_LIGHT = "#a9c9ef"
 COLOR_SECONDARY = "#eb6834"
 COLOR_TERTIARY = "#1baf7a"
+COLOR_QUATERNARY = "#eda100"
 
 COLOR_TEXT = "#0b0b0b"
 COLOR_TEXT_MUTED = "#52514e"
@@ -28,6 +30,9 @@ COLOR_GRID = "#e4e3df"
 COLOR_REFERENCE = "#8a8983"
 
 plt.rcParams.update({
+    # DejaVu Sans ships with matplotlib, so figures render the same
+    # on every machine
+    "font.family": "DejaVu Sans",
     "figure.facecolor": "white",
     "axes.facecolor": "white",
     "axes.edgecolor": COLOR_GRID,
@@ -75,9 +80,23 @@ def new_figure():
     return fig, ax
 
 
+def shrink_to_fit(fig, text, minimum_font_size=8):
+    """Reduce a title's font size until it fits within the figure width."""
+    available_width = fig.get_window_extent().width * 0.97
+
+    fig.canvas.draw()
+
+    while (
+        text.get_window_extent().x1 > available_width
+        and text.get_fontsize() > minimum_font_size
+    ):
+        text.set_fontsize(text.get_fontsize() - 0.5)
+        fig.canvas.draw()
+
+
 def add_titles(fig, headline, subtitle):
     """Headline states the conclusion; subtitle says what is plotted."""
-    fig.text(
+    headline_text = fig.text(
         0.02,
         0.955,
         headline,
@@ -88,7 +107,7 @@ def add_titles(fig, headline, subtitle):
         va="top",
     )
 
-    fig.text(
+    subtitle_text = fig.text(
         0.02,
         0.895,
         subtitle,
@@ -97,6 +116,10 @@ def add_titles(fig, headline, subtitle):
         ha="left",
         va="top",
     )
+
+    # Long titles are shrunk slightly rather than running off the figure
+    shrink_to_fit(fig, headline_text)
+    shrink_to_fit(fig, subtitle_text)
 
 
 def save_figure(fig, filename, source_note=SOURCE_NOTE):
