@@ -3,8 +3,10 @@ incremental_margin_per_aircraft,8,5,12,EUR_million,assumption,Illustrative incre
 ramp_investment,2500,1500,4000,EUR_million,assumption,Illustrative investment specifically attributable to the A320 production ramp
 discount_rate,0.10,0.08,0.12,decimal,assumption,Illustrative corporate investment hurdle rate
 project_life_years,10,8,12,years,assumption,Illustrative economic life of the capacity investment
-supply_chain_availability,0.95,0.80,1.00,decimal,assumption,Share of nominal production capacity achievable after supplier and engine constraints
-demand_utilization,1.00,0.85,1.00,decimal,assumption,Share of effective capacity assumed to be supported by demand
-maximum_annual_demand,800,900,1000,aircraft_per_year,assumption,Illustrative annual market demand available for A320-family deliveries
+supply_chain_availability,0.95,0.80,1.00,decimal,assumption,Share of the planned production ramp that key suppliers can support; acts as a ceiling on deliveries with and without the investment
 inventory_cost_per_aircraft,0.5,1.0,1.5,EUR_million_per_aircraft_year,assumption,Illustrative annual storage maintenance insurance and working-capital cost per aircraft held
 capex_scaling_exponent,1.0,1.2,1.4,decimal,assumption,Controls how quickly capacity investment rises above the 75-aircraft-per-month reference case
+production_cost_per_aircraft,45,40,50,EUR_million,assumption,Illustrative cash cost of building one A320-family aircraft; tied up while the aircraft sits undelivered in inventory
+comfortable_annual_rate_step,5,5,5,aircraft_per_month_per_year,assumption,Illustrative year-on-year increase in monthly rate that can be absorbed without expedite costs
+expedite_cost_per_rate_point,150,100,250,EUR_million,assumption,Illustrative extra ramp cost per aircraft-per-month of annual rate increase above the comfortable step
+baseline_monthly_rate,55,53.5,60,aircraft_per_month,assumption,Illustrative monthly rate the existing industrial system can sustain with no further investment when suppliers are not the limit. Low value is the 2019 record of 642 deliveries; base adds about 3 percent for capacity added since; high is the rate Airbus announced for 2019

@@ -1,16 +1,19 @@
 import pandas as pd
 
 from demand import get_demand_plan
-from financial_analysis import npv, payback_period
+from financial_analysis import npv
 from model import (
     annual_delivery_flow,
     annual_production,
+    baseline_annual_deliveries,
     capacity_dependent_investment,
-    incremental_annual_deliveries,
+    inventory_build_cash_flow,
     incremental_annual_profit,
     inventory_holding_cost,
     load_assumptions,
     load_input_values,
+    phased_capacity_investment,
+    planned_production,
 )
 from production_plan import get_production_ramp, get_rate_sensitivity
 
@@ -18,55 +21,115 @@ reported = load_input_values()
 
 
 # --------------------------------------------------
-# Original simplified constant-rate scenario
+# Shared year-by-year delivery and cash-flow simulation
+# Used by both the constant-rate and the ramp scenarios
 # --------------------------------------------------
 
-def evaluate_scenario(
-    monthly_rate,
+def simulate_years(
+    monthly_rate_by_year,
     margin_per_aircraft,
-    ramp_investment,
-    discount_rate,
-    project_life_years,
     supply_chain_availability,
-    demand_utilization,
+    inventory_cost_per_aircraft,
+    production_cost_per_aircraft,
+    baseline_monthly_rate,
+    demand_case="base",
 ):
-    base_annual_deliveries = reported["a320_2025_deliveries"]
+    demand_plan = get_demand_plan(demand_case)
 
-    incremental_deliveries = incremental_annual_deliveries(
-        target_monthly_rate=monthly_rate,
-        base_annual_deliveries=base_annual_deliveries,
-        supply_chain_availability=supply_chain_availability,
-        demand_utilization=demand_utilization,
-    )
+    beginning_inventory = 0
+    beginning_backlog = reported["a320_backlog_2025"]
 
-    annual_profit_gain = incremental_annual_profit(
-        incremental_deliveries=incremental_deliveries,
-        incremental_margin_per_aircraft=margin_per_aircraft,
-    )
+    annual_results = []
 
-    annual_cash_flows = [
-        annual_profit_gain
-        for _ in range(int(project_life_years))
-    ]
+    for year, monthly_rate in monthly_rate_by_year.items():
 
-    project_npv = npv(
-        initial_investment=ramp_investment,
-        annual_cash_flows=annual_cash_flows,
-        discount_rate=discount_rate,
-    )
+        production_capacity = annual_production(
+            monthly_rate=monthly_rate,
+            supply_chain_availability=supply_chain_availability,
+        )
 
-    payback = payback_period(
-        initial_investment=ramp_investment,
-        annual_incremental_profit=annual_profit_gain,
-    )
+        delivery_demand = demand_plan[year]["delivery_demand"]
+        new_orders = demand_plan[year]["new_orders"]
 
-    return {
-        "monthly_rate": monthly_rate,
-        "incremental_deliveries": incremental_deliveries,
-        "annual_profit_gain": annual_profit_gain,
-        "npv": project_npv,
-        "payback_years": payback,
-    }
+        # Production is capped at what can be delivered, so capacity
+        # above deliverable demand stays idle instead of building stock.
+        production = planned_production(
+            production_capacity=production_capacity,
+            beginning_inventory=beginning_inventory,
+            beginning_backlog=beginning_backlog,
+            new_orders=new_orders,
+            delivery_demand=delivery_demand,
+        )
+
+        deliveries, ending_inventory, ending_backlog = annual_delivery_flow(
+            annual_production=production,
+            beginning_inventory=beginning_inventory,
+            beginning_backlog=beginning_backlog,
+            new_orders=new_orders,
+            delivery_demand=delivery_demand,
+        )
+
+        # Without the investment, the existing factories face the same
+        # supply ceiling. Gains are measured against what they deliver.
+        baseline_deliveries = baseline_annual_deliveries(
+            baseline_monthly_rate=baseline_monthly_rate,
+            supply_ceiling=production_capacity,
+            delivery_demand=delivery_demand,
+        )
+
+        incremental_deliveries = (
+            deliveries
+            - baseline_deliveries
+        )
+
+        annual_profit_gain = incremental_annual_profit(
+            incremental_deliveries=incremental_deliveries,
+            incremental_margin_per_aircraft=margin_per_aircraft,
+        )
+
+        inventory_cost = inventory_holding_cost(
+            beginning_inventory=beginning_inventory,
+            ending_inventory=ending_inventory,
+            inventory_cost_per_aircraft=inventory_cost_per_aircraft,
+        )
+
+        # Aircraft built but not delivered cost their full production
+        # cost in the year they are built. Without this, overproduction
+        # would only cost the small annual holding charge.
+        inventory_build_cost = inventory_build_cash_flow(
+            beginning_inventory=beginning_inventory,
+            ending_inventory=ending_inventory,
+            production_cost_per_aircraft=production_cost_per_aircraft,
+        )
+
+        operating_cash_flow = (
+            annual_profit_gain
+            - inventory_cost
+            - inventory_build_cost
+        )
+
+        annual_results.append({
+            "year": year,
+            "monthly_rate": monthly_rate,
+            "production_capacity": production_capacity,
+            "production": production,
+            "delivery_demand": delivery_demand,
+            "new_orders": new_orders,
+            "deliveries": deliveries,
+            "baseline_deliveries": baseline_deliveries,
+            "ending_inventory": ending_inventory,
+            "ending_backlog": ending_backlog,
+            "incremental_deliveries": incremental_deliveries,
+            "profit_gain": annual_profit_gain,
+            "inventory_cost": inventory_cost,
+            "inventory_build_cost": inventory_build_cost,
+            "operating_cash_flow": operating_cash_flow,
+        })
+
+        beginning_inventory = ending_inventory
+        beginning_backlog = ending_backlog
+
+    return annual_results
 
 
 # --------------------------------------------------
@@ -83,12 +146,12 @@ def evaluate_rate_scenario(
     supply_chain_availability,
     inventory_cost_per_aircraft,
     capex_scaling_exponent,
+    production_cost_per_aircraft,
+    baseline_monthly_rate,
+    demand_case="base",
 ):
-    base_annual_deliveries = reported["a320_2025_deliveries"]
-    base_monthly_rate = reported["a320_monthly_2025_average"]
+    base_monthly_rate = baseline_monthly_rate
     reference_target_rate = reported["target_monthly_rate_high"]
-
-    demand_plan = get_demand_plan()
 
     actual_ramp_investment = capacity_dependent_investment(
         target_monthly_rate=monthly_rate,
@@ -98,62 +161,22 @@ def evaluate_rate_scenario(
         capex_scaling_exponent=capex_scaling_exponent,
     )
 
-    beginning_inventory = 0
-    beginning_backlog = reported["a320_backlog_2025"]
+    years = list(get_demand_plan().keys())[:int(project_life_years)]
 
-    annual_cash_flows = []
-    total_deliveries = 0
-    total_inventory_cost = 0
+    annual_results = simulate_years(
+        monthly_rate_by_year={year: monthly_rate for year in years},
+        margin_per_aircraft=margin_per_aircraft,
+        supply_chain_availability=supply_chain_availability,
+        inventory_cost_per_aircraft=inventory_cost_per_aircraft,
+        production_cost_per_aircraft=production_cost_per_aircraft,
+        baseline_monthly_rate=baseline_monthly_rate,
+        demand_case=demand_case,
+    )
 
-    years = list(demand_plan.keys())[:int(project_life_years)]
-
-    for year in years:
-
-        production = annual_production(
-            monthly_rate=monthly_rate,
-            supply_chain_availability=supply_chain_availability,
-            demand_utilization=1.0,
-        )
-
-        delivery_demand = demand_plan[year]["delivery_demand"]
-        new_orders = demand_plan[year]["new_orders"]
-
-        deliveries, ending_inventory, ending_backlog = annual_delivery_flow(
-            annual_production=production,
-            beginning_inventory=beginning_inventory,
-            beginning_backlog=beginning_backlog,
-            new_orders=new_orders,
-            delivery_demand=delivery_demand,
-        )
-
-        incremental_deliveries = (
-            deliveries
-            - base_annual_deliveries
-        )
-
-        annual_profit_gain = incremental_annual_profit(
-            incremental_deliveries=incremental_deliveries,
-            incremental_margin_per_aircraft=margin_per_aircraft,
-        )
-
-        inventory_cost = inventory_holding_cost(
-            beginning_inventory=beginning_inventory,
-            ending_inventory=ending_inventory,
-            inventory_cost_per_aircraft=inventory_cost_per_aircraft,
-        )
-
-        annual_cash_flow = (
-            annual_profit_gain
-            - inventory_cost
-        )
-
-        annual_cash_flows.append(annual_cash_flow)
-
-        total_deliveries += deliveries
-        total_inventory_cost += inventory_cost
-
-        beginning_inventory = ending_inventory
-        beginning_backlog = ending_backlog
+    annual_cash_flows = [
+        row["operating_cash_flow"]
+        for row in annual_results
+    ]
 
     project_npv = npv(
         initial_investment=actual_ramp_investment,
@@ -165,15 +188,25 @@ def evaluate_rate_scenario(
         "monthly_rate": monthly_rate,
         "ramp_investment": actual_ramp_investment,
         "npv": project_npv,
-        "ending_inventory": beginning_inventory,
-        "ending_backlog": beginning_backlog,
-        "total_deliveries": total_deliveries,
-        "total_inventory_cost": total_inventory_cost,
+        "ending_inventory": annual_results[-1]["ending_inventory"],
+        "ending_backlog": annual_results[-1]["ending_backlog"],
+        "total_deliveries": sum(
+            row["deliveries"] for row in annual_results
+        ),
+        "total_inventory_cost": sum(
+            row["inventory_cost"] for row in annual_results
+        ),
+        "total_inventory_build_cost": sum(
+            row["inventory_build_cost"] for row in annual_results
+        ),
     }
 
 
 # --------------------------------------------------
 # Production-ramp scenario
+# Capacity investment is phased over the ramp, and
+# year-on-year rate increases above the comfortable
+# step incur an expedite cost
 # --------------------------------------------------
 
 def evaluate_ramp_scenario(
@@ -184,124 +217,89 @@ def evaluate_ramp_scenario(
     supply_chain_availability,
     inventory_cost_per_aircraft,
     capex_scaling_exponent,
+    production_cost_per_aircraft,
+    comfortable_annual_rate_step,
+    expedite_cost_per_rate_point,
+    baseline_monthly_rate,
 ):
     production_ramp = get_production_ramp(ramp_case)
-    demand_plan = get_demand_plan()
 
-    base_annual_deliveries = reported[
-        "a320_2025_deliveries"
-    ]
-
-    base_monthly_rate = reported[
-        "a320_monthly_2025_average"
-    ]
-
-    reference_target_rate = reported[
-        "target_monthly_rate_high"
-    ]
-
-    target_monthly_rate = max(
-        production_ramp.values()
-    )
-
-    actual_ramp_investment = capacity_dependent_investment(
-        target_monthly_rate=target_monthly_rate,
-        base_monthly_rate=base_monthly_rate,
-        reference_target_rate=reference_target_rate,
+    investment_schedule = phased_capacity_investment(
+        production_ramp=production_ramp,
+        base_monthly_rate=baseline_monthly_rate,
+        reference_target_rate=reported["target_monthly_rate_high"],
         reference_investment=ramp_investment,
         capex_scaling_exponent=capex_scaling_exponent,
+        comfortable_annual_rate_step=comfortable_annual_rate_step,
+        expedite_cost_per_rate_point=expedite_cost_per_rate_point,
     )
 
-    annual_results = []
-    annual_cash_flows = []
-
-    beginning_inventory = 0
-
-    beginning_backlog = reported[
-        "a320_backlog_2025"
+    # Capacity that comes online in a given year is paid for at the end
+    # of the previous year. The first year's capacity is paid at time zero.
+    investment_spend = [
+        step["capex"] + step["expedite_cost"]
+        for step in investment_schedule
     ]
 
-    for year, monthly_rate in production_ramp.items():
+    upfront_investment = investment_spend[0]
 
-        production = annual_production(
-            monthly_rate=monthly_rate,
-            supply_chain_availability=supply_chain_availability,
-            demand_utilization=1.0,
+    annual_results = simulate_years(
+        monthly_rate_by_year=production_ramp,
+        margin_per_aircraft=margin_per_aircraft,
+        supply_chain_availability=supply_chain_availability,
+        inventory_cost_per_aircraft=inventory_cost_per_aircraft,
+        production_cost_per_aircraft=production_cost_per_aircraft,
+        baseline_monthly_rate=baseline_monthly_rate,
+    )
+
+    annual_cash_flows = []
+
+    for index, row in enumerate(annual_results):
+
+        if index + 1 < len(investment_spend):
+            capacity_investment = investment_spend[index + 1]
+        else:
+            capacity_investment = 0
+
+        row["capacity_investment"] = capacity_investment
+
+        row["net_cash_flow"] = (
+            row["operating_cash_flow"]
+            - capacity_investment
         )
 
-        delivery_demand = demand_plan[
-            year
-        ]["delivery_demand"]
-
-        new_orders = demand_plan[
-            year
-        ]["new_orders"]
-
-        deliveries, ending_inventory, ending_backlog = (
-            annual_delivery_flow(
-                annual_production=production,
-                beginning_inventory=beginning_inventory,
-                beginning_backlog=beginning_backlog,
-                new_orders=new_orders,
-                delivery_demand=delivery_demand,
-            )
-        )
-
-        incremental_deliveries = (
-            deliveries
-            - base_annual_deliveries
-        )
-
-        annual_profit_gain = incremental_annual_profit(
-            incremental_deliveries=incremental_deliveries,
-            incremental_margin_per_aircraft=margin_per_aircraft,
-        )
-
-        inventory_cost = inventory_holding_cost(
-            beginning_inventory=beginning_inventory,
-            ending_inventory=ending_inventory,
-            inventory_cost_per_aircraft=inventory_cost_per_aircraft,
-        )
-
-        annual_cash_flow = (
-            annual_profit_gain
-            - inventory_cost
-        )
-
-        annual_cash_flows.append(
-            annual_cash_flow
-        )
-
-        annual_results.append({
-            "year": year,
-            "monthly_rate": monthly_rate,
-            "production": production,
-            "delivery_demand": delivery_demand,
-            "new_orders": new_orders,
-            "deliveries": deliveries,
-            "ending_inventory": ending_inventory,
-            "ending_backlog": ending_backlog,
-            "incremental_deliveries": incremental_deliveries,
-            "profit_gain": annual_profit_gain,
-            "inventory_cost": inventory_cost,
-            "net_cash_flow": annual_cash_flow,
-        })
-
-        beginning_inventory = ending_inventory
-        beginning_backlog = ending_backlog
+        annual_cash_flows.append(row["net_cash_flow"])
 
     project_npv = npv(
-        initial_investment=actual_ramp_investment,
+        initial_investment=upfront_investment,
         annual_cash_flows=annual_cash_flows,
         discount_rate=discount_rate,
     )
+
+    payback_year = None
+    cumulative_cash_flow = -upfront_investment
+
+    for row in annual_results:
+        cumulative_cash_flow += row["net_cash_flow"]
+
+        if cumulative_cash_flow >= 0:
+            payback_year = row["year"]
+            break
 
     return {
         "annual_results": pd.DataFrame(
             annual_results
         ),
-        "ramp_investment": actual_ramp_investment,
+        "ramp_investment": sum(investment_spend),
+        "upfront_investment": upfront_investment,
+        "capex": sum(
+            step["capex"] for step in investment_schedule
+        ),
+        "expedite_cost": sum(
+            step["expedite_cost"] for step in investment_schedule
+        ),
         "npv": project_npv,
+        "payback_year": payback_year,
     }
 
 
@@ -309,60 +307,50 @@ def evaluate_ramp_scenario(
 # Ramp cases
 # --------------------------------------------------
 
+def run_ramp_case(ramp_case, assumptions):
+    return evaluate_ramp_scenario(
+        ramp_case=ramp_case,
+        margin_per_aircraft=assumptions["incremental_margin_per_aircraft"],
+        ramp_investment=assumptions["ramp_investment"],
+        discount_rate=assumptions["discount_rate"],
+        supply_chain_availability=assumptions["supply_chain_availability"],
+        inventory_cost_per_aircraft=assumptions["inventory_cost_per_aircraft"],
+        capex_scaling_exponent=assumptions["capex_scaling_exponent"],
+        production_cost_per_aircraft=assumptions["production_cost_per_aircraft"],
+        comfortable_annual_rate_step=assumptions["comfortable_annual_rate_step"],
+        expedite_cost_per_rate_point=assumptions["expedite_cost_per_rate_point"],
+        baseline_monthly_rate=assumptions["baseline_monthly_rate"],
+    )
+
+
 def ramp_cases():
     assumptions = load_assumptions("base")
 
     results = {}
 
     for ramp_case in ["slow", "base", "fast"]:
-        result = evaluate_ramp_scenario(
-            ramp_case=ramp_case,
-            margin_per_aircraft=assumptions[
-                "incremental_margin_per_aircraft"
-            ],
-            ramp_investment=assumptions[
-                "ramp_investment"
-            ],
-            discount_rate=assumptions[
-                "discount_rate"
-            ],
-            supply_chain_availability=assumptions[
-                "supply_chain_availability"
-            ],
-            inventory_cost_per_aircraft=assumptions[
-                "inventory_cost_per_aircraft"
-            ],
-            capex_scaling_exponent=assumptions[
-                "capex_scaling_exponent"
-            ],
+        results[ramp_case] = run_ramp_case(
+            ramp_case,
+            assumptions,
         )
-
-        results[ramp_case] = result
 
     return results
 
 
 # --------------------------------------------------
-# Standard low / base / high cases
+# Standard low / base / high assumption cases
+# Each runs the base production ramp with the
+# corresponding column of the assumptions file
 # --------------------------------------------------
 
 def standard_cases():
     cases = {}
 
     for case_name in ["low", "base", "high"]:
-        assumptions = load_assumptions(case_name)
-
-        result = evaluate_scenario(
-            monthly_rate=reported["target_monthly_rate_high"],
-            margin_per_aircraft=assumptions["incremental_margin_per_aircraft"],
-            ramp_investment=assumptions["ramp_investment"],
-            discount_rate=assumptions["discount_rate"],
-            project_life_years=assumptions["project_life_years"],
-            supply_chain_availability=assumptions["supply_chain_availability"],
-            demand_utilization=assumptions["demand_utilization"],
+        cases[case_name] = run_ramp_case(
+            "base",
+            load_assumptions(case_name),
         )
-
-        cases[case_name] = result
 
     return cases
 
@@ -371,7 +359,7 @@ def standard_cases():
 # Improved production-rate sensitivity
 # --------------------------------------------------
 
-def rate_sensitivity():
+def rate_sensitivity(demand_case="base"):
     assumptions = load_assumptions("base")
 
     rows = []
@@ -386,6 +374,9 @@ def rate_sensitivity():
             supply_chain_availability=assumptions["supply_chain_availability"],
             inventory_cost_per_aircraft=assumptions["inventory_cost_per_aircraft"],
             capex_scaling_exponent=assumptions["capex_scaling_exponent"],
+            production_cost_per_aircraft=assumptions["production_cost_per_aircraft"],
+            baseline_monthly_rate=assumptions["baseline_monthly_rate"],
+            demand_case=demand_case,
         )
 
         rows.append(result)
@@ -399,20 +390,28 @@ def rate_sensitivity():
 
 if __name__ == "__main__":
 
-    print("STANDARD CASES")
+    print("STANDARD CASES (base ramp, low / base / high assumptions)")
     print("=" * 60)
 
     for case_name, result in standard_cases().items():
-        print(f"\n{case_name.upper()}")
-        print(f"Monthly rate: {result['monthly_rate']:.0f}")
-        print(f"Incremental annual deliveries: {result['incremental_deliveries']:.1f}")
-        print(f"Annual incremental profit: €{result['annual_profit_gain']:,.1f}m")
-        print(f"NPV: €{result['npv']:,.1f}m")
+        final_year = result["annual_results"].iloc[-1]
 
-        if result["payback_years"] is None:
-            print("Payback: No positive payback")
+        print(f"\n{case_name.upper()}")
+        print(
+            f"Deliveries in {final_year['year']:.0f}: "
+            f"{final_year['deliveries']:.0f}"
+        )
+        print(f"Capacity investment: €{result['capex']:,.0f}m")
+        print(f"Expedite cost: €{result['expedite_cost']:,.0f}m")
+        print(f"NPV: €{result['npv']:,.0f}m")
+
+        if result["payback_year"] is None:
+            print("Cumulative cash flow turns positive: not within horizon")
         else:
-            print(f"Payback: {result['payback_years']:.2f} years")
+            print(
+                f"Cumulative cash flow turns positive: "
+                f"{result['payback_year']:.0f}"
+            )
 
 
     print()
@@ -437,7 +436,13 @@ if __name__ == "__main__":
 
         print(
             f"Capacity investment: "
-            f"€{result['ramp_investment']:,.0f} million"
+            f"€{result['capex']:,.0f} million "
+            f"(€{result['upfront_investment']:,.0f} million at time zero)"
+        )
+
+        print(
+            f"Expedite cost: "
+            f"€{result['expedite_cost']:,.0f} million"
         )
 
         print(

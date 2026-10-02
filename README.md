@@ -41,6 +41,7 @@ airbus_capacity_analysis/
 ├── scenarios.py
 ├── plots.py
 ├── fixed_plots.py
+├── plot_style.py
 ├── main.py
 ├── requirements.txt
 └── README.md
@@ -94,6 +95,10 @@ Combines the operating model, financial model, production plans, and demand assu
 - backlog
 - investment requirements
 
+**`main.py`**
+
+Prints the headline base case. The headline is the base production ramp, with a comparison of the slow, base, and fast ramps and a constant-rate-75 reference case.
+
 **`plots.py`**
 
 Generates model-dependent plots that may change when assumptions or scenarios are changed.
@@ -101,6 +106,10 @@ Generates model-dependent plots that may change when assumptions or scenarios ar
 **`fixed_plots.py`**
 
 Generates plots based only on historical reported or derived Airbus data.
+
+**`plot_style.py`**
+
+Contains the shared figure style, colors, and helper functions used by both plotting scripts, so that all report figures look consistent.
 
 ---
 
@@ -122,6 +131,12 @@ python -m pip install -r requirements.txt
 ---
 
 ## Run the Analysis
+
+Print the headline base case:
+
+```powershell
+python main.py
+```
 
 Run scenario analysis:
 
@@ -153,17 +168,32 @@ python scenarios.py && python plots.py
 
 ## 1. Production Capacity
 
-Nominal annual production is calculated from the planned monthly production rate:
+Annual production capacity is calculated from the planned monthly production rate:
 
 ```text
 monthly production rate
 × 12
 × supply-chain availability
 =
-annual production
+annual production capacity
 ```
 
-Supply-chain availability is interpreted as a **production realization factor**.
+Actual production is capped at what can be delivered in that year:
+
+```text
+annual production
+=
+minimum of:
+
+annual production capacity
+deliverable orders - beginning inventory
+```
+
+where deliverable orders are the smaller of customer delivery demand and outstanding orders.
+
+Capacity above deliverable demand therefore stays idle rather than building aircraft that customers cannot take. Idle capacity still costs its capacity investment.
+
+Supply-chain availability is interpreted as the **share of the planned production ramp that key suppliers can support**.
 
 For example:
 
@@ -175,7 +205,11 @@ For example:
 855 aircraft/year
 ```
 
-It does not mean that 95% of suppliers are available. It represents the proportion of nominal production capacity that can actually be achieved under supply-chain constraints.
+It does not mean that 95% of suppliers are available. It represents how well key suppliers, such as engine manufacturers, scale their output with Airbus's expansion plans.
+
+It acts as a ceiling on deliveries both with and without the investment. If suppliers cannot support more aircraft than the existing factories can already build, the investment adds no deliveries while its cost is still paid. The value of the capacity investment therefore depends on suppliers' ability to scale.
+
+This is a simplification: the supply ceiling is tied to the planned rate, which assumes suppliers deliver a fixed share of whatever Airbus plans.
 
 ---
 
@@ -218,6 +252,14 @@ aircraft customers are assumed ready to receive during a specific year
 ```
 
 The yearly demand and new-order values in `demand.py` are illustrative assumptions.
+
+The base demand plan rises to 900 aircraft per year. This level is supported by three reference points:
+
+- it is Airbus's own stated stabilisation rate of 75 aircraft per month;
+- it corresponds to about 53% of Airbus's Global Market Forecast for single-aisle aircraft, in line with the A320 Family's historical share of deliveries and orders;
+- it sits somewhat above the historical A320neo-family net order rate, with the difference covered by the order backlog.
+
+`demand.py` also defines a low demand level of 760 aircraft per year (roughly the long-run net order rate) and a high level of 1,000 aircraft per year. These are used only for the demand sensitivity figure. All other results use the base demand plan.
 
 ---
 
@@ -265,7 +307,7 @@ beginning inventory
 ending inventory
 ```
 
-If production exceeds deliverable demand, aircraft accumulate in inventory.
+Because production is capped at deliverable demand, inventory normally stays at zero. The inventory logic is kept so that the model remains correct if a different production policy is introduced.
 
 The model assigns a holding cost to this inventory to approximate costs associated with:
 
@@ -282,14 +324,34 @@ Inventory-cost assumptions are illustrative and are not reported Airbus aircraft
 
 ## 6. Incremental Deliveries
 
-Incremental deliveries are measured relative to reported 2025 A320 Family deliveries:
+Incremental deliveries are measured relative to a no-investment baseline:
 
 ```text
 annual deliveries
-- 2025 A320 Family deliveries
+- baseline deliveries
 =
 incremental deliveries
 ```
+
+The baseline is what the existing industrial system delivers with no further investment. It faces the same supply ceiling and delivery demand as the ramp:
+
+```text
+baseline deliveries
+=
+minimum of:
+
+baseline monthly rate × 12
+supply ceiling
+delivery demand
+```
+
+The base assumption is 55 aircraft per month, or 660 deliveries per year when suppliers are not the limit.
+
+This is anchored on Airbus's highest annual A320 Family deliveries: 642 aircraft in 2019, or 53.5 per month, the last year before the pandemic and the engine shortage. Airbus has expanded its production capability since then, so the base assumption is set about 3% above that level.
+
+Airbus does not publish the capacity of its existing A320 Family production system. The baseline is therefore a model assumption, not reported Airbus data, and it is tested in the sensitivity analysis between 53.5 per month (the 2019 record) and 60 per month (the rate Airbus announced for 2019).
+
+No production ramp runs below the base baseline rate.
 
 ---
 
@@ -312,14 +374,19 @@ The current model assumes a constant contribution margin unless additional produ
 
 ## 8. Inventory-Adjusted Cash Flow
 
-Annual model cash flow is calculated as:
+Annual operating cash flow is calculated as:
 
 ```text
 incremental profit
 - inventory holding cost
+- production cost of aircraft added to inventory
 =
-annual incremental cash flow
+annual operating cash flow
 ```
+
+The incremental margin is only earned when an aircraft is delivered. An aircraft that is built but not delivered therefore costs its full assumed production cost in the year it is built, and that cash is released again if the aircraft is delivered from inventory in a later year.
+
+With production capped at deliverable demand, this term is normally zero. It ensures that any production policy that builds ahead of demand is charged for it.
 
 ---
 
@@ -331,14 +398,44 @@ Instead, required capacity investment scales with the size of the production exp
 
 The investment model uses:
 
-- historical production level
+- no-investment baseline rate
 - target production rate
 - a reference investment assumption
 - a capacity-scaling exponent
 
+Investment is measured from the no-investment baseline, so the reference investment covers the step from the baseline rate to the 75-aircraft-per-month reference target.
+
 This means that a hypothetical expansion to 90 or 100 aircraft per month requires more investment than an expansion toward Airbus's stated 70–75 aircraft-per-month production objective.
 
 The exact investment relationship remains an illustrative modeling assumption.
+
+### Investment timing in the ramp scenarios
+
+In the constant-rate sensitivity, the full investment is paid at time zero.
+
+In the ramp scenarios, investment is phased over the ramp:
+
+```text
+investment for capacity coming online in a year
+=
+total investment
+× capacity added that year / total capacity added
+```
+
+Capacity that comes online in a given year is paid for at the end of the previous year. The first year's capacity is paid at time zero.
+
+### Expedite cost
+
+A faster ramp is not free. Year-on-year increases in the monthly rate above an assumed comfortable step incur an expedite cost:
+
+```text
+expedite cost
+=
+(annual rate increase - comfortable annual rate step)
+× expedite cost per rate point
+```
+
+This represents overtime, supplier premiums, and other costs of ramping quickly. Both parameters are illustrative assumptions.
 
 ---
 
@@ -352,6 +449,8 @@ NPV
 -initial capacity investment
 + discounted future annual cash flows
 ```
+
+In the ramp scenarios, the phased investment and expedite costs of later years are deducted from the annual cash flows before discounting.
 
 Future cash flows are discounted using the assumed project discount rate.
 
@@ -413,11 +512,12 @@ For every tested production rate, the model recalculates:
 - deliveries
 - inventory
 - inventory cost
+- production cost tied up in undelivered aircraft
 - required capacity investment
 - backlog
 - NPV
 
-This allows the model to identify where additional production capacity may stop creating economic value because additional investment and inventory costs begin to outweigh additional deliveries.
+This allows the model to identify where additional production capacity may stop creating economic value because the extra capacity can no longer be delivered against demand while its investment cost continues to rise.
 
 Any production rate identified as value-maximizing is a **model result under the selected assumptions**, not a claim about Airbus's actual optimal production rate.
 
@@ -597,6 +697,7 @@ Source:
 
 The following inputs are illustrative assumptions and are **not reported Airbus internal values**:
 
+- no-investment baseline production rate
 - incremental contribution margin per additional aircraft
 - A320-specific ramp investment
 - discount rate
@@ -605,7 +706,10 @@ The following inputs are illustrative assumptions and are **not reported Airbus 
 - yearly customer delivery demand
 - yearly new orders
 - inventory holding cost per aircraft
+- production cost per aircraft
 - capacity-investment scaling exponent
+- comfortable annual rate step
+- expedite cost per rate point
 
 These assumptions are deliberately stored separately from reported data.
 
@@ -639,8 +743,7 @@ discounted cash flows
 
 For example, very high production rates may initially increase deliveries but can eventually create:
 
-- excess capacity
-- inventory accumulation
+- idle excess capacity
 - higher capacity investment
 - lower project NPV
 
@@ -652,11 +755,16 @@ The point at which this occurs depends on the model assumptions.
 
 The project generates the following model-based plots:
 
-- NPV vs monthly production rate
-- NPV sensitivity to incremental margin
-- NPV sensitivity to supply-chain availability
+- production rate over time for the slow, base, and fast ramps
+- base-ramp cumulative cash flow, with the low point and payback year marked
+- NPV vs monthly production rate, with the Airbus target rate and the value-maximizing rate marked
+- NPV vs monthly production rate for low, base, and high delivery demand
+- tornado chart of NPV sensitivity to the main assumptions
+- NPV by ramp scenario and supply-chain availability, with the base case and the break-even availability marked
 - NPV comparison across ramp scenarios
-- production vs deliveries vs inventory
+- base-ramp delivery demand, production capacity, and deliveries
+
+Each figure has a headline stating its conclusion, which is generated from the model results, and a source note. Values are shown in € billion.
 
 Historical fixed-data plots include:
 
@@ -692,11 +800,11 @@ Results should therefore be interpreted as **scenario-analysis outputs**, not fo
 - [ ] Introduce downside, base, and upside demand scenarios.
 - [ ] Add separate engine and major-supplier capacity constraints.
 - [ ] Add uncertainty to future order intake.
-- [ ] Model production-ramp investment over multiple years rather than entirely at time zero.
+- [x] Model production-ramp investment over multiple years rather than entirely at time zero.
 - [ ] Add Monte Carlo simulation.
 - [ ] Add a more detailed working-capital model.
 - [ ] Introduce production-rate-dependent variable costs.
-- [ ] Compare alternative ramp strategies under identical demand assumptions.
+- [x] Compare alternative ramp strategies under identical demand assumptions.
 - [ ] Add sensitivity to inventory holding cost and investment scaling.
 
 ---

@@ -43,32 +43,65 @@ def load_assumptions(case="base"):
 def annual_production(
     monthly_rate,
     supply_chain_availability=1.0,
-    demand_utilization=1.0
 ):
+    """Annual output that suppliers can support at a planned monthly rate.
+
+    Supply-chain availability is the share of the planned rate that key
+    suppliers can support, so this is the supply ceiling on production.
+    """
     return (
         monthly_rate
         * 12
         * supply_chain_availability
-        * demand_utilization
     )
 
 
-def incremental_annual_deliveries(
-    target_monthly_rate,
-    base_annual_deliveries,
-    supply_chain_availability=1.0,
-    demand_utilization=1.0
+def planned_production(
+    production_capacity,
+    beginning_inventory,
+    beginning_backlog,
+    new_orders,
+    delivery_demand,
 ):
+    """Aircraft actually built in a year.
 
-    target_annual = annual_production(
-        monthly_rate=target_monthly_rate,
-        supply_chain_availability=supply_chain_availability,
-        demand_utilization=demand_utilization
+    Production is capped at what can be delivered: customer delivery
+    demand and outstanding orders, less aircraft already in inventory.
+    Capacity above that level stays idle rather than building aircraft
+    nobody can take.
+    """
+    deliverable_orders = min(
+        delivery_demand,
+        beginning_backlog + new_orders,
     )
 
-    return (
-        target_annual
-        - base_annual_deliveries
+    required_production = max(
+        0,
+        deliverable_orders - beginning_inventory,
+    )
+
+    return min(
+        production_capacity,
+        required_production,
+    )
+
+
+def baseline_annual_deliveries(
+    baseline_monthly_rate,
+    supply_ceiling,
+    delivery_demand,
+):
+    """Deliveries the existing system achieves with no further investment.
+
+    The existing factories can build baseline_monthly_rate x 12 aircraft
+    a year. They are held back by the same supply ceiling as the ramp,
+    so if suppliers cannot support more than the existing factories can
+    already build, the investment adds nothing.
+    """
+    return min(
+        baseline_monthly_rate * 12,
+        supply_ceiling,
+        delivery_demand,
     )
 
 
@@ -215,6 +248,97 @@ def capacity_dependent_investment(
         reference_investment
         * capacity_ratio ** capex_scaling_exponent
     )
+
+def inventory_build_cash_flow(
+    beginning_inventory,
+    ending_inventory,
+    production_cost_per_aircraft,
+):
+    """Cash tied up in (or released from) built-but-undelivered aircraft.
+
+    The incremental margin is only earned when an aircraft is delivered,
+    so an aircraft that is built and not delivered costs its full
+    production cost in that year. The cash comes back if the aircraft
+    is delivered from inventory in a later year.
+    """
+    return (
+        ending_inventory
+        - beginning_inventory
+    ) * production_cost_per_aircraft
+
+
+def phased_capacity_investment(
+    production_ramp,
+    base_monthly_rate,
+    reference_target_rate,
+    reference_investment,
+    capex_scaling_exponent,
+    comfortable_annual_rate_step,
+    expedite_cost_per_rate_point,
+):
+    """Spread capacity investment over the ramp instead of paying it all at time zero.
+
+    Total capex is set by the peak rate of the ramp. It is allocated to
+    each year in proportion to the capacity that comes online that year.
+    Year-on-year rate increases above the comfortable step also incur an
+    expedite cost, so a faster ramp is no longer free.
+
+    Returns a list of dicts, one per ramp year, with the capex and
+    expedite cost attributable to the capacity added in that year.
+    """
+    peak_rate = max(production_ramp.values())
+
+    total_capex = capacity_dependent_investment(
+        target_monthly_rate=peak_rate,
+        base_monthly_rate=base_monthly_rate,
+        reference_target_rate=reference_target_rate,
+        reference_investment=reference_investment,
+        capex_scaling_exponent=capex_scaling_exponent,
+    )
+
+    total_capacity_added = max(
+        0,
+        peak_rate - base_monthly_rate,
+    )
+
+    schedule = []
+    installed_rate = base_monthly_rate
+
+    for year, monthly_rate in production_ramp.items():
+
+        capacity_added = max(
+            0,
+            monthly_rate - installed_rate,
+        )
+
+        if total_capacity_added > 0:
+            capex = (
+                total_capex
+                * capacity_added
+                / total_capacity_added
+            )
+        else:
+            capex = 0
+
+        expedite_cost = max(
+            0,
+            capacity_added - comfortable_annual_rate_step,
+        ) * expedite_cost_per_rate_point
+
+        schedule.append({
+            "year": year,
+            "capacity_added": capacity_added,
+            "capex": capex,
+            "expedite_cost": expedite_cost,
+        })
+
+        installed_rate = max(
+            installed_rate,
+            monthly_rate,
+        )
+
+    return schedule
+
 
 if __name__ == "__main__":
     show_input_classification()

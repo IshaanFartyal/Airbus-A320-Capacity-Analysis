@@ -1,11 +1,13 @@
 # Includes ramp schedule and sensitivity test range
 # A320-family production ramp scenarios
 # Values represent nominal aircraft produced per month
+# No ramp runs below the base no-investment baseline rate of 55,
+# which is set in data/airbus_assumptions.csv
 
 
 RAMPS = {
     "slow": {
-        2026: 52,
+        2026: 55,
         2027: 57,
         2028: 62,
         2029: 67,
