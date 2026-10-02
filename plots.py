@@ -3,8 +3,8 @@
 #
 # Figures are saved in the outputs folder:
 #   ramp_paths.png
-#   base_ramp_production_deliveries_inventory.png
-#   base_ramp_cumulative_cash_flow.png
+#   target_case_deliveries_vs_demand.png
+#   target_case_cumulative_cash_flow.png
 #   npv_by_ramp_scenario.png
 #   npv_vs_production_rate.png
 #   npv_vs_production_rate_by_demand.png
@@ -31,7 +31,7 @@ from plot_style import (
     save_figure,
 )
 from demand import DEMAND_LEVELS
-from production_plan import get_production_ramp
+from production_plan import RAMP_LABELS, TARGET_CASE, get_production_ramp
 from scenarios import (
     evaluate_rate_scenario,
     ramp_cases,
@@ -267,7 +267,7 @@ def plot_npv_tornado():
     downside = load_assumptions("downside")
     upside = load_assumptions("upside")
 
-    base_npv = billions(run_ramp_case("base", base)["npv"])
+    base_npv = billions(run_ramp_case(TARGET_CASE, base)["npv"])
 
     rows = []
 
@@ -280,10 +280,10 @@ def plot_npv_tornado():
         upside_case[parameter] = upside[parameter]
 
         npv_at_downside = billions(
-            run_ramp_case("base", downside_case)["npv"]
+            run_ramp_case(TARGET_CASE, downside_case)["npv"]
         )
         npv_at_upside = billions(
-            run_ramp_case("base", upside_case)["npv"]
+            run_ramp_case(TARGET_CASE, upside_case)["npv"]
         )
 
         rows.append({
@@ -299,10 +299,10 @@ def plot_npv_tornado():
     # Delivery demand is defined in demand.py rather than the
     # assumptions file, so it is added separately
     npv_at_downside = billions(
-        run_ramp_case("base", base, demand_case="downside")["npv"]
+        run_ramp_case(TARGET_CASE, base, demand_case="downside")["npv"]
     )
     npv_at_upside = billions(
-        run_ramp_case("base", base, demand_case="upside")["npv"]
+        run_ramp_case(TARGET_CASE, base, demand_case="upside")["npv"]
     )
 
     rows.append({
@@ -454,7 +454,7 @@ def plot_npv_tornado():
             f"{largest['label']} moves NPV the most"
         ),
         subtitle=(
-            "Base-ramp NPV when one assumption moves to its downside or "
+            "Target-case NPV when one assumption moves to its downside or "
             "upside value, others at base"
         ),
     )
@@ -500,9 +500,9 @@ def plot_npv_vs_supply_chain_availability(base_assumptions):
     percentages = [60 + 2.5 * step for step in range(17)]
 
     ramp_styles = [
-        ("slow", COLOR_TERTIARY),
-        ("base", COLOR_PRIMARY),
-        ("fast", COLOR_SECONDARY),
+        ("gradual", COLOR_TERTIARY),
+        ("delay", COLOR_SECONDARY),
+        ("target", COLOR_PRIMARY),
     ]
 
     fig, ax = new_figure()
@@ -525,7 +525,7 @@ def plot_npv_vs_supply_chain_availability(base_assumptions):
             percentages,
             npvs,
             color=color,
-            label=f"{ramp_case.capitalize()} ramp",
+            label=RAMP_LABELS[ramp_case],
         )
 
     add_zero_line(ax, all_npvs)
@@ -534,7 +534,7 @@ def plot_npv_vs_supply_chain_availability(base_assumptions):
     base_percentage = base_assumptions["supply_chain_availability"] * 100
 
     base_npv = ramp_npv_at_availability(
-        "base",
+        TARGET_CASE,
         base_assumptions,
         base_percentage / 100,
     )
@@ -552,8 +552,8 @@ def plot_npv_vs_supply_chain_availability(base_assumptions):
         fontsize=9,
     )
 
-    # Break-even of the base ramp
-    break_even = break_even_availability("base", base_assumptions)
+    # Break-even of the Airbus target case
+    break_even = break_even_availability(TARGET_CASE, base_assumptions)
 
     if break_even is not None:
         break_even_percentage = break_even * 100
@@ -577,7 +577,13 @@ def plot_npv_vs_supply_chain_availability(base_assumptions):
     )
     ax.set_ylabel("NPV (€ billion)")
 
+    # Lines are drawn with the target case last so it sits on top;
+    # the legend lists it first
+    handles, labels = ax.get_legend_handles_labels()
+
     ax.legend(
+        handles[::-1],
+        labels[::-1],
         loc="upper left",
         fontsize=9,
     )
@@ -595,7 +601,7 @@ def plot_npv_vs_supply_chain_availability(base_assumptions):
         headline=headline,
         subtitle=(
             "NPV by ramp scenario and supply-chain availability. "
-            "Break-even shown for the base ramp"
+            "Break-even shown for the Airbus target case"
         ),
     )
 
@@ -607,7 +613,7 @@ def plot_npv_vs_supply_chain_availability(base_assumptions):
 # --------------------------------------------------
 
 def plot_npv_by_ramp_scenario(ramp_results):
-    names = [name.capitalize() for name in ramp_results]
+    names = [RAMP_LABELS[name] for name in ramp_results]
 
     npvs = [
         billions(result["npv"])
@@ -662,7 +668,7 @@ def plot_npv_by_ramp_scenario(ramp_results):
     add_titles(
         fig,
         headline=(
-            f"The {names[best_index].lower()} ramp creates the most value, "
+            f"{names[best_index]} creates the most value, "
             f"by €{lead:.1f}bn over the next best"
         ),
         subtitle=(
@@ -675,11 +681,11 @@ def plot_npv_by_ramp_scenario(ramp_results):
 
 
 # --------------------------------------------------
-# Figure: Base ramp capacity, deliveries and demand
+# Figure: Airbus target case capacity, deliveries and demand
 # --------------------------------------------------
 
-def plot_base_ramp(ramp_results):
-    df = ramp_results["base"]["annual_results"]
+def plot_target_case(ramp_results):
+    df = ramp_results[TARGET_CASE]["annual_results"]
 
     fig, ax = new_figure()
 
@@ -767,24 +773,24 @@ def plot_base_ramp(ramp_results):
     if capacity_bound_years == len(df):
         headline = (
             "Capacity, not demand, limits deliveries "
-            "in every year of the base ramp"
+            "in every year of the Airbus target case"
         )
     else:
         headline = (
             f"Capacity limits deliveries in {capacity_bound_years} "
-            f"of {len(df)} years of the base ramp"
+            f"of {len(df)} years of the Airbus target case"
         )
 
     add_titles(
         fig,
         headline=headline,
         subtitle=(
-            "Base ramp: annual delivery demand, production capacity "
+            "Airbus target case: annual delivery demand, production capacity "
             "and deliveries"
         ),
     )
 
-    save_figure(fig, "base_ramp_production_deliveries_inventory.png")
+    save_figure(fig, "target_case_deliveries_vs_demand.png")
 
 
 # --------------------------------------------------
@@ -800,9 +806,9 @@ def plot_ramp_paths(reported, base_assumptions):
     base_rate = base_assumptions["baseline_monthly_rate"]
 
     ramp_styles = [
-        ("slow", COLOR_TERTIARY),
-        ("base", COLOR_PRIMARY),
-        ("fast", COLOR_SECONDARY),
+        ("gradual", COLOR_TERTIARY),
+        ("delay", COLOR_SECONDARY),
+        ("target", COLOR_PRIMARY),
     ]
 
     fig, ax = new_figure()
@@ -825,7 +831,7 @@ def plot_ramp_paths(reported, base_assumptions):
             years,
             rates,
             color=color,
-            label=f"{ramp_case.capitalize()} ramp",
+            label=RAMP_LABELS[ramp_case],
         )
 
         target_year = next(
@@ -899,17 +905,23 @@ def plot_ramp_paths(reported, base_assumptions):
     ax.set_xlabel("Year")
     ax.set_ylabel("Monthly production rate (aircraft)")
 
+    # Lines are drawn with the target case last so it sits on top;
+    # the legend lists it first
+    handles, labels = ax.get_legend_handles_labels()
+
     ax.legend(
+        handles[::-1],
+        labels[::-1],
         loc="lower right",
         fontsize=9,
     )
 
-    if target_years["fast"] and target_years["slow"]:
-        gap = target_years["slow"] - target_years["fast"]
+    if target_years["target"] and target_years["gradual"]:
+        gap = target_years["gradual"] - target_years["target"]
 
         headline = (
-            f"The fast ramp reaches rate {target_rate:.0f} in "
-            f"{target_years['fast']}, {gap} years before the slow ramp"
+            f"The Airbus target reaches rate {target_rate:.0f} in "
+            f"{target_years['target']}, {gap} years before the gradual ramp"
         )
     else:
         headline = "The three ramps reach the target rate at different speeds"
@@ -927,12 +939,12 @@ def plot_ramp_paths(reported, base_assumptions):
 
 
 # --------------------------------------------------
-# Figure: Base ramp cumulative cash flow
+# Figure: Airbus target case cumulative cash flow
 # Undiscounted, starting from the time-zero investment
 # --------------------------------------------------
 
-def plot_base_ramp_cumulative_cash_flow(ramp_results):
-    result = ramp_results["base"]
+def plot_target_case_cumulative_cash_flow(ramp_results):
+    result = ramp_results[TARGET_CASE]
     df = result["annual_results"]
 
     years = [df["year"].iloc[0] - 1] + list(df["year"])
@@ -1008,12 +1020,12 @@ def plot_base_ramp_cumulative_cash_flow(ramp_results):
 
     if payback_year is not None:
         headline = (
-            f"The base ramp is cash-negative until {payback_year}, "
+            f"The Airbus target case is cash-negative until {payback_year}, "
             f"with a low point of {euro_billions(trough_value)}"
         )
     else:
         headline = (
-            "The base ramp does not recover its investment "
+            "The Airbus target case does not recover its investment "
             "within the model horizon"
         )
 
@@ -1021,12 +1033,12 @@ def plot_base_ramp_cumulative_cash_flow(ramp_results):
         fig,
         headline=headline,
         subtitle=(
-            "Base ramp: cumulative incremental cash flow after "
+            "Airbus target case: cumulative incremental cash flow after "
             "investment and expedite costs, undiscounted"
         ),
     )
 
-    save_figure(fig, "base_ramp_cumulative_cash_flow.png")
+    save_figure(fig, "target_case_cumulative_cash_flow.png")
 
 
 # --------------------------------------------------
@@ -1039,8 +1051,8 @@ def main():
     ramp_results = ramp_cases()
 
     plot_ramp_paths(reported, base_assumptions)
-    plot_base_ramp(ramp_results)
-    plot_base_ramp_cumulative_cash_flow(ramp_results)
+    plot_target_case(ramp_results)
+    plot_target_case_cumulative_cash_flow(ramp_results)
     plot_npv_by_ramp_scenario(ramp_results)
     plot_npv_vs_production_rate(reported)
     plot_npv_vs_production_rate_by_demand(reported)

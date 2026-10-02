@@ -15,7 +15,12 @@ from model import (
     phased_capacity_investment,
     planned_production,
 )
-from production_plan import get_production_ramp, get_rate_sensitivity
+from production_plan import (
+    RAMP_LABELS,
+    TARGET_CASE,
+    get_production_ramp,
+    get_rate_sensitivity,
+)
 
 reported = load_input_values()
 
@@ -331,7 +336,7 @@ def ramp_cases():
 
     results = {}
 
-    for ramp_case in ["slow", "base", "fast"]:
+    for ramp_case in RAMP_LABELS:
         results[ramp_case] = run_ramp_case(
             ramp_case,
             assumptions,
@@ -342,7 +347,7 @@ def ramp_cases():
 
 # --------------------------------------------------
 # Combined downside / base / upside cases
-# Each runs the base production ramp with every
+# Each runs the Airbus target case with every
 # assumption, including delivery demand, at its
 # downside, base, or upside value
 # --------------------------------------------------
@@ -352,7 +357,7 @@ def standard_cases():
 
     for case_name in ["downside", "base", "upside"]:
         cases[case_name] = run_ramp_case(
-            "base",
+            TARGET_CASE,
             load_assumptions(case_name),
             demand_case=case_name,
         )
@@ -395,7 +400,7 @@ def rate_sensitivity(demand_case="base"):
 
 if __name__ == "__main__":
 
-    print("COMBINED CASES (base ramp, all assumptions at downside / base / upside)")
+    print("COMBINED CASES (Airbus target case, all assumptions at downside / base / upside)")
     print("=" * 60)
 
     for case_name, result in standard_cases().items():
@@ -431,7 +436,7 @@ if __name__ == "__main__":
 
     for ramp_case, result in ramp_cases().items():
         print()
-        print(ramp_case.upper())
+        print(RAMP_LABELS[ramp_case].upper())
 
         print(
             result["annual_results"].to_string(

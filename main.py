@@ -1,14 +1,16 @@
 from model import load_assumptions, load_input_values
+from production_plan import RAMP_LABELS, TARGET_CASE
 from scenarios import evaluate_rate_scenario, ramp_cases
 
 reported = load_input_values()
 assumptions = load_assumptions("base")
 
 
-# Headline case: the base production ramp, with phased capacity
-# investment, the demand plan, backlog and inventory effects.
+# Headline case: the Airbus target case, which follows Airbus's stated
+# aim of rate 70 to 75 by the end of 2027, with phased capacity
+# investment, the demand plan and backlog effects.
 ramp_results = ramp_cases()
-base_ramp = ramp_results["base"]
+target_case = ramp_results[TARGET_CASE]
 
 # Reference case: constant rate 75 from the first year, with the
 # full investment paid at time zero.
@@ -26,7 +28,7 @@ constant_rate = evaluate_rate_scenario(
 )
 
 
-print("AIRBUS A320 CAPACITY EXPANSION - BASE CASE")
+print("AIRBUS A320 CAPACITY EXPANSION - AIRBUS TARGET CASE")
 print("=" * 60)
 
 print(f"2025 A320-family deliveries: {reported['a320_2025_deliveries']:.0f}")
@@ -52,10 +54,10 @@ print(
 )
 
 print()
-print("BASE RAMP (headline case)")
+print("AIRBUS TARGET CASE (headline case)")
 print("-" * 60)
 
-final_year = base_ramp["annual_results"].iloc[-1]
+final_year = target_case["annual_results"].iloc[-1]
 
 print(
     f"Deliveries in {final_year['year']:.0f}: "
@@ -63,18 +65,18 @@ print(
     f"({final_year['incremental_deliveries']:+.0f} vs no-investment baseline)"
 )
 print(
-    f"Capacity investment: €{base_ramp['capex']:,.0f}m "
-    f"(€{base_ramp['upfront_investment']:,.0f}m at time zero, rest phased)"
+    f"Capacity investment: €{target_case['capex']:,.0f}m "
+    f"(€{target_case['upfront_investment']:,.0f}m at time zero, rest phased)"
 )
-print(f"Expedite cost: €{base_ramp['expedite_cost']:,.0f}m")
-print(f"Project NPV: €{base_ramp['npv']:,.0f}m")
+print(f"Expedite cost: €{target_case['expedite_cost']:,.0f}m")
+print(f"Project NPV: €{target_case['npv']:,.0f}m")
 
-if base_ramp["payback_year"] is None:
+if target_case["payback_year"] is None:
     print("Cumulative cash flow turns positive: not within the model horizon")
 else:
     print(
         f"Cumulative cash flow turns positive: "
-        f"{base_ramp['payback_year']:.0f}"
+        f"{target_case['payback_year']:.0f}"
     )
 
 print()
@@ -83,7 +85,7 @@ print("-" * 60)
 
 for ramp_case, result in ramp_results.items():
     print(
-        f"{ramp_case.capitalize():<5} "
+        f"{RAMP_LABELS[ramp_case]:<15} "
         f"NPV €{result['npv']:>7,.0f}m | "
         f"expedite cost €{result['expedite_cost']:>5,.0f}m"
     )
@@ -94,7 +96,7 @@ print("-" * 60)
 print(f"Project NPV: €{constant_rate['npv']:,.0f}m")
 print(
     "This assumes the full rate is available immediately and all "
-    "investment is paid at time zero, so it overstates the base ramp."
+    "investment is paid at time zero, so it overstates the target case."
 )
 
 print()
